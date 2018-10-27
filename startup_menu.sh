@@ -46,6 +46,15 @@ enter_folder() {
     cd $1
 }
 
+check_display_open_filebrowser() {
+    if [ -z "$DISPLAY" ] ; then
+        whiptail --msgbox "X Server not found! Did you enable ssh X11 forwarding?" 20 60 1
+        init_board
+    else
+        exec xdg-open .
+    fi
+}
+
 compile_and_run() {
     echo clang++ -Wall -Wextra -std=c++11 $1
     if [[ COLORIZE==0 ]] ; then
@@ -116,6 +125,7 @@ init_editor_preference() {
             "0" " nano" \
             "1" " vim" \
             "2" " emacs" \
+            "3" " gvim" \
             3>&1 1>&2 2>&3)
     if [[ $? -eq 0 ]] ; then
         case "$result" in
@@ -130,6 +140,10 @@ init_editor_preference() {
             2)
                 echo "PREFERRED_EDITOR=emacs" > "$HOME/.guide_editor_preference" 
                 PREFERRED_EDITOR=emacs
+                ;;
+            3)
+                echo "PREFERRED_EDITOR=gvim" > "$HOME/.guide_editor_preference" 
+                PREFERRED_EDITOR=gvim
                 ;;
         esac
     fi
@@ -148,7 +162,8 @@ init_board() {
         --menu "Please select the thing you want to do:" 15 80 6 \
         "1" " Open up a folder" \
         "2" " Quit the guide and use the terminal directly" \
-        "3" " Edit your editor perference" \
+        "3" " Open up an X11 file browser (requires -X in your ssh command)" \
+        "4" " Edit your editor perference" \
         3>&1 1>&2 2>&3)
     
     if [[ $? != 0 ]] ; then
@@ -158,7 +173,8 @@ init_board() {
     case "$result" in
         1) ;;
         2) do_finish ;;
-        3) 
+        3) check_display_open_filebrowser ;;
+        4) 
             init_editor_preference
             init_board
             ;;
