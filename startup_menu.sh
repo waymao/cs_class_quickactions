@@ -3,7 +3,7 @@
 # start_menu.sh
 # quick startup menu for doing compsci coursework stuff
 #
-# Copyright (c) 2018 waymao
+# Copyright (c) 2018 ywei04 <Yichen Wei>
 #
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,6 +25,7 @@
 # SOFTWARE.
 
 BACKTITLE="Welcom to startup guide"
+COLORIZE=1
 
 
 IFS='
@@ -45,6 +46,39 @@ enter_folder() {
     cd $1
 }
 
+compile_and_run() {
+    echo clang++ -Wall -Wextra -std=c++11 $1
+    if [[ COLORIZE==0 ]] ; then
+        error_message=$(clang++ -Wall -Wextra -fcolor-diagnostics -std=c++11 $1 3>&1 1>&2 2>&3)
+    else
+        error_message=$(clang++ -Wall -Wextra -std=c++11 $1 3>&1 1>&2 2>&3)
+    fi
+    COMPILE_RET=$?
+    echo "$error_message"
+    echo "$error_message" | grep -q "warning"
+    GREP_RET=$?
+    if [[ "$RET" == 1 ]] ; then
+        echo "Compile failed. Please Check the error messages!"
+        read -p "Press enter to continue to the startup guide... "
+    elif [[ "$GREP_RET" == 0 ]] ; then
+        echo "Compiler warning observed. Please Check the error messages!"
+        read -p "Do you still want to run the program? (y/N) " RUN_PROGRAM
+        if [[ "$RUN_PROGRAM" = "y" ]] || [[ "$RUN_PROGRAM" = "Y" ]] ; then
+            echo "----------Running the program...----------"
+            ./a.out
+            echo Process exited with status $?
+            echo "------------------------------------------"
+        fi
+        read -p "Press enter to continue to the startup guide... "
+    else
+        echo "----------Running the program...----------"
+        ./a.out
+        echo Process exited with status $?
+        echo "------------------------------------------"
+        read -p "Press enter to continue to the startup guide... "
+    fi
+}
+
 open_file() {
     file=$1
     result=$(whiptail --backtitle "$BACKTITLE" \
@@ -61,22 +95,12 @@ open_file() {
         case "$result" in
             0) less $file ;;
             1) $PREFERRED_EDITOR $file ;;
-            2) 
-                echo clang++ -Wall -Wextra -std=c++11 $1
-                clang++ -Wall -Wextra -std=c++11 $1
-                RET=$?
-                if [[ "$RET" -eq 1 ]] ; then
-                    echo "Compile failed. Please Check the error messages!"
-                    read -p "Press enter to continue to the startup guide... "
-                else
-                    ./a.out
-                    echo Process exited with status $?
-                    read -p "Press enter to continue to the startup guide... "
-                fi
-                ;;
+            2) compile_and_run $1 ;;
             3) 
+                echo "----------Running the program...----------"
                 ./$file
                 echo Process exited with status $?
+                echo "------------------------------------------"
                 read -p "Press enter to continue to the startup guide... "
         esac || whiptail --msgbox "There was an error running option" 20 60 1
     fi
@@ -87,26 +111,28 @@ init_editor_preference() {
     result=$(whiptail --backtitle "$BACKTITLE" \
             --title "Select Options" \
             --ok-button Select \
-            --cancel-button Quit \
+            --cancel-button Cancel \
             --menu "Please select your favorite editor:" 15 80 6 \
             "0" " nano" \
             "1" " vim" \
             "2" " emacs" \
             3>&1 1>&2 2>&3)
-    case "$result" in
-        0)
-            echo "PREFERRED_EDITOR=nano" > "$HOME/.guide_editor_preference" 
-            PREFERRED_EDITOR=nano
-            ;;
-        1)
-            echo "PREFERRED_EDITOR=vim" > "$HOME/.guide_editor_preference" 
-            PREFERRED_EDITOR=vim
-            ;;
-        2)
-            echo "PREFERRED_EDITOR=emacs" > "$HOME/.guide_editor_preference" 
-            PREFERRED_EDITOR=emacs
-            ;;
-    esac
+    if [[ $? -eq 0 ]] ; then
+        case "$result" in
+            0)
+                echo "PREFERRED_EDITOR=nano" > "$HOME/.guide_editor_preference" 
+                PREFERRED_EDITOR=nano
+                ;;
+            1)
+                echo "PREFERRED_EDITOR=vim" > "$HOME/.guide_editor_preference" 
+                PREFERRED_EDITOR=vim
+                ;;
+            2)
+                echo "PREFERRED_EDITOR=emacs" > "$HOME/.guide_editor_preference" 
+                PREFERRED_EDITOR=emacs
+                ;;
+        esac
+    fi
 }
 
 init_board() {
@@ -207,5 +233,4 @@ while (( "$continue" == 0 )) ; do
     unset files
 done
 unset i s continue result IFS
-
 
